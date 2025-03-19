@@ -7,21 +7,22 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  try {
-    const { reportedUsers } = req.body;
+  console.log('Received body:', req.body);
 
-    if (!reportedUsers) {
+  try {
+    if (!req.body || !req.body.reportedUsers) {
       return res.status(400).json({ error: 'Missing reportedUsers data' });
     }
-
+    
     let parsedData;
     try {
-      parsedData = JSON.parse(reportedUsers);
+      parsedData = JSON.parse(req.body.reportedUsers);
     } catch (error) {
       return res.status(400).json({ error: 'Invalid JSON format in reportedUsers' });
     }
 
     const { version, reportedUsers: userData } = parsedData;
+
     if (typeof version !== 'number' || !Array.isArray(userData)) {
       return res.status(400).json({ error: 'Invalid data format' });
     }

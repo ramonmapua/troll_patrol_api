@@ -12,6 +12,7 @@
     "server": "nodemon index.js"
   },
   "dependencies": {
+    "@vercel/frameworks": "^3.6.2",
     "vercel": "^41.4.1"
   }
 }

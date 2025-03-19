@@ -1,7 +1,6 @@
 {
-    "compilerOptions": {
-      "lib": ["ES2021", "DOM"],
-      "types": ["node"]
-    }
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "skipLibCheck": true
   }
-  
+}
