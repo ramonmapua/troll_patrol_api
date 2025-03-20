@@ -110,5 +110,3 @@ export default class BloomFilter {
         console.log('Merge successful.');
     }
 }
-
-module.exports = BloomFilter;
