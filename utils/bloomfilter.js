@@ -1,4 +1,4 @@
-class BloomFilter {
+export default class BloomFilter {
 
     // Creates a Bloom filter with the variables m and k.
     // m can either be an array-like object with a length
