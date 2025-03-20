@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "moduleResolution": "node",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "target": "ES2017"
   }
 }
