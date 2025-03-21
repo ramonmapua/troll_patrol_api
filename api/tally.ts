@@ -4,8 +4,8 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 const redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL!,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    url: process.env.KV_REST_API_URL!,
+    token: process.env.KV_REST_API_TOKEN!,
 });
 
 const REPORT_THRESHOLD = 5;
@@ -31,6 +31,7 @@ async function saveBloomFilter(bloomFilter: BloomFilter) {
     console.log('Bloom filter saved to Redis.');
 }
 
+// TODO: after this function executes, call push.ts
 async function tallyReports() {
     console.log('Starting tally process...');
     const bloomFilter = await loadBloomFilter();
