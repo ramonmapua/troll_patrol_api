@@ -34,30 +34,39 @@ async function saveBloomFilter(bloomFilter: BloomFilter) {
 async function tallyReports() {
     console.log('Starting tally process...');
     const bloomFilter = await loadBloomFilter();
+    const reportTallyMap: Map<string, number> = new Map();
     const keysToDelete: string[] = [];
     let cursor = '0';
     do {
         const [newCursor, keys] = await redis.scan(cursor, { match: 'report:*' });
         cursor = newCursor;
         for (const key of keys) {
+            const reportData = await redis.get(key);
+            if (!reportData) continue;
+            const reporters = await redis.smembers(key);
             const hashedId = key.split(':')[1];
-            const reportCount = await redis.scard(key);
-            if (reportCount >= REPORT_THRESHOLD && !bloomFilter.check(hashedId)) {
-                bloomFilter.add(hashedId);
-                console.log(`Added hashed ID ${hashedId} to the Bloom filter.`);
-            }
+            reportTallyMap.set(hashedId, reporters.length);
             keysToDelete.push(key);
         }
     } while (cursor !== '0');
+    console.log('Finished collecting report data.');
+    for (const [hashedId, count] of reportTallyMap.entries()) {
+        if (count >= REPORT_THRESHOLD && !bloomFilter.check(hashedId)) {
+        bloomFilter.add(hashedId);
+        console.log(`Added hashed ID ${hashedId} to the Bloom filter.`);
+      }
+    }
     await saveBloomFilter(bloomFilter);
-    console.log('Bloom filter updated.');
     if (keysToDelete.length > 0) {
         await Promise.all(keysToDelete.map((key) => redis.del(key)));
         console.log(`${keysToDelete.length} report keys cleared from Redis.`);
     } else {
         console.log('No report keys to delete.');
-    }
+    }   
     console.log('Tally complete.');
 }
-tallyReports();
+
+tallyReports().catch((error) => {
+    console.error('Error in tally process:', error);
+});
 export default tallyReports;

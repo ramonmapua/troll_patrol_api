@@ -44,19 +44,20 @@ export default class BloomFilter {
     // It then computes two hash values using the fnv1aHash function.
     // k = number of hash functions (or indices)
     // r  = computed indices. Indices for setting or checking bits in the Bloom filter.
-    locations(v) {
+    // Calculates the Bloom filter bit locations using the hashed ID
+    locations(hashedId) {
         const r = this.indexes;
-        const hash1 = this.fnv1aHash(v);
-        const hash2 = this.fnv1aHash(v + "salt");
+        const hash1 = BigInt(`0x${hashedId}`);
+        const hash2 = this.fnv1aHash(hashedId + "salt");
         for (let i = 0; i < this.k; i++) {
             r[i] = Number((hash1 + BigInt(i) * hash2) % BigInt(this.m));
         }
         return r;
     }
 
-    // Adds a value to the Bloom filter.
-    add(v) {
-        const l = this.locations(v + "");
+    // Adds a hashed ID to the Bloom filter
+    add(hashedId) {
+        const l = this.locations(hashedId);
         for (let i = 0; i < this.k; i++) {
             this.buckets[Math.floor(l[i] / 32)] |= 1 << (l[i] % 32);
         }
