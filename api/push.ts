@@ -10,27 +10,24 @@ const redis = new Redis({
 
 async function getBloomFilterFromRedis(): Promise<string | null> {
     const today = new Date().toISOString().split('T')[0];
-    const filePath = `bloomfilter-${today}.json`
+    const filePath = `bloomfilter-${today}`;
     const data = await redis.get(filePath);
     if (!data) {
         console.log('No Bloom filter found in Redis.');
         return null;
     }
-    let parsedData;
     try {
-        const outerData = JSON.parse(data as string);
-        parsedData = JSON.parse(outerData.reportedUsers);
+        const outerData = typeof data === 'string' ? JSON.parse(data) : data;
+        if (!outerData?.version || !Array.isArray(outerData.reportedUsers)) {
+            throw new Error('Invalid data structure detected.');
+        }
+        console.log(`Bloom filter for version ${outerData.version} retrieved from Redis.`);
+        return JSON.stringify(outerData, null, 2);
     } catch (error) {
         console.error('Error parsing Bloom filter data:', error);
         return null;
     }
-    if (!parsedData?.version || !Array.isArray(parsedData.reportedUsers)) {
-        console.error('Invalid data structure detected.');
-        return null;
-    }
-    console.log(`Bloom filter for version ${parsedData.version} retrieved from Redis.`);
-    return JSON.stringify(parsedData, null, 2);
-}  
+}
 
 async function getCurrentFileSHA(filePath: string): Promise<string | null> {
     try {

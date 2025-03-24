@@ -29,8 +29,8 @@ async function loadBloomFilter(): Promise<BloomFilter> {
 async function saveBloomFilter(bloomFilter: BloomFilter) {
     const bloomFilterKey = getBloomFilterKey();
     const data = {
-        version: new Date().toISOString(),
-        buckets: Array.from(bloomFilter.buckets),
+        version: new Date().toISOString().split('T')[0],
+        reportedUsers: Array.from(bloomFilter.buckets),
     };
     await redis.set(bloomFilterKey, JSON.stringify(data));
     console.log('Bloom filter saved to Redis.');
