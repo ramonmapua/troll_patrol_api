@@ -13,7 +13,7 @@ const HASH_FUNCTIONS_COUNT = 5;
 
 function getBloomFilterKey(): string {
     const today = new Date().toISOString().split('T')[0];
-    return `bloomfilter:${today}`;
+    return `bloomfilter-${today}`;
 }
 
 async function loadBloomFilter(): Promise<BloomFilter> {
