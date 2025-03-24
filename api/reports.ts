@@ -58,23 +58,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         } 
         const results = await Promise.all(reports.map(async (hashedId) => {
             const reportKey = `report:${hashedId}`;
-            const countKey = `report:${hashedId}:count`;
-            const isNewReporter = await redis.sadd(reportKey, reporterId);
-            if (isNewReporter === 1) {
-                await redis.incr(countKey);
-            }
+            const countKey = `${reportKey}:count`;
+            await redis.sadd(reportKey, reporterId);
+            await redis.incr(countKey);
             await redis.expire(reportKey, REPORT_EXPIRY_SECONDS);
-            await redis.expire(countKey, REPORT_EXPIRY_SECONDS);    
-            const totalReports = await redis.get(countKey); 
-            const reportCount = totalReports !== null ? parseInt(String(totalReports)) : 0;
+            await redis.expire(countKey, REPORT_EXPIRY_SECONDS);
+        
+            const totalReports = await redis.get(countKey);
             return {
                 hashedId,
-                message: isNewReporter === 1 
-                    ? 'Report received successfully' 
-                    : 'Duplicate report ignored, but expiry reset',
-                reports: reportCount
+                message: 'Report received successfully',
+                reports: totalReports ? parseInt(String(totalReports)) : 0
             };
-        }));  
+        }));
         return res.status(200).json({ results });
     } catch (error) {
       console.error('Error handling reports:', error);
