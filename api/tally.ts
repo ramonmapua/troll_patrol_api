@@ -44,14 +44,19 @@ async function tallyReports() {
     const keysToDelete: string[] = [];
     let cursor = '0';
     do {
-        const [newCursor, keys] = await redis.scan(cursor, { match: 'report:*' });
+        const [newCursor, keys] = await redis.scan(cursor, { match: 'report:*:count' });
         cursor = newCursor;
         for (const key of keys) {
-            const profileId = key.split(':')[1];
-            const totalReports = await redis.get(`${key}:count`);
+            const keyParts = key.split(':');
+            if (keyParts.length !== 3 || keyParts[0] !== 'report' || keyParts[2] !== 'count') {
+                console.warn(`Invalid key format: ${key}`);
+                continue;
+            }
+            const profileId = keyParts[1];
+            const totalReports = await redis.get(key);
             if (!totalReports) continue;
             reportTallyMap.set(profileId, parseInt(String(totalReports)));
-            keysToDelete.push(key, `${key}:count`);
+            keysToDelete.push(`report:${profileId}`, key);
         }
     } while (cursor !== '0');
     console.log('Finished collecting report data.');
