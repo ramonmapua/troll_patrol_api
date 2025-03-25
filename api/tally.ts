@@ -36,7 +36,7 @@ async function saveBloomFilter(bloomFilter: BloomFilter) {
     console.log('Bloom filter saved to Redis.');
 }
 
-// TODO: after this function executes, call push.ts
+// TODO: After this function executes, call push.ts
 async function tallyReports() {
     console.log('Starting tally process...');
     const bloomFilter = await loadBloomFilter();
@@ -44,22 +44,18 @@ async function tallyReports() {
     const keysToDelete: string[] = [];
     let cursor = '0';
     do {
-        const [newCursor, keys] = await redis.scan(cursor, { match: 'report:*:count' });
+        const [newCursor, keys] = await redis.scan(cursor, { match: 'report:*' });
         cursor = newCursor;
         for (const key of keys) {
-            const keyParts = key.split(':');
-            if (keyParts.length !== 3 || keyParts[0] !== 'report' || keyParts[2] !== 'count') {
-                console.warn(`Invalid key format: ${key}`);
-                continue;
-            }
-            const profileId = keyParts[1];
-            const totalReports = await redis.get(key);
+            const profileId = key.split(':')[1];
+            const totalReports = await redis.get(`${key}:count`);
             if (!totalReports) continue;
             reportTallyMap.set(profileId, parseInt(String(totalReports)));
-            keysToDelete.push(`report:${profileId}`, key);
+            keysToDelete.push(key, `${key}:count`);
         }
     } while (cursor !== '0');
     console.log('Finished collecting report data.');
+
     for (const [profileId, count] of reportTallyMap.entries()) {
         if (count >= REPORT_THRESHOLD && !bloomFilter.check(profileId)) {
             bloomFilter.add(profileId);
