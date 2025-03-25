@@ -60,7 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!reporterId || typeof reporterId !== 'string') {
             return res.status(400).json({ error: 'Unable to identify reporter' });
         }
-        if (!Array.isArray(reports) || reports.some((profileId) => typeof profileId !== 'string' || !/^[a-zA-Z0-9-_]+$/.test(profileId))) {
+        if (!Array.isArray(reports) || reports.some((profileId) => typeof profileId !== 'string')) {
             return res.status(400).json({ error: 'Invalid reports format. Provide a valid list of profile IDs.' });
         }
         if (!await rateLimitCheck(reporterId)) {
