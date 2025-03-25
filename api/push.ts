@@ -49,7 +49,7 @@ async function pushBloomFilterToGitHub() {
     if (!bloomFilterData) return;   
     const parsedData = JSON.parse(bloomFilterData);
     const versionDate = parsedData.version;
-    const filePath = `bloomfilter:${versionDate}.json`; 
+    const filePath = `bloomfilter-${versionDate}.json`; 
     const currentSHA = await getCurrentFileSHA(filePath);
     const commitMessage = currentSHA
         ? `Update Bloom filter with reports as of ${versionDate}`
