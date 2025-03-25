@@ -47,18 +47,18 @@ async function tallyReports() {
         const [newCursor, keys] = await redis.scan(cursor, { match: 'report:*' });
         cursor = newCursor;
         for (const key of keys) {
-            const hashedId = key.split(':')[1];
+            const profileId = key.split(':')[1];
             const totalReports = await redis.get(`${key}:count`);
             if (!totalReports) continue;
-            reportTallyMap.set(hashedId, parseInt(String(totalReports)));
+            reportTallyMap.set(profileId, parseInt(String(totalReports)));
             keysToDelete.push(key, `${key}:count`);
         }
     } while (cursor !== '0');
     console.log('Finished collecting report data.');
-    for (const [hashedId, count] of reportTallyMap.entries()) {
-        if (count >= REPORT_THRESHOLD && !bloomFilter.check(hashedId)) {
-            bloomFilter.add(hashedId);
-            console.log(`Added hashed ID ${hashedId} to the Bloom filter with ${count} reports.`);
+    for (const [profileId, count] of reportTallyMap.entries()) {
+        if (count >= REPORT_THRESHOLD && !bloomFilter.check(profileId)) {
+            bloomFilter.add(profileId);
+            console.log(`Added profile ID ${profileId} to the Bloom filter with ${count} reports.`);
         }
     }
     await saveBloomFilter(bloomFilter);
