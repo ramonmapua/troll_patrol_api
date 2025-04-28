@@ -36,7 +36,6 @@ async function saveBloomFilter(bloomFilter: BloomFilter) {
     console.log('Bloom filter saved to Redis.');
 }
 
-// TODO: After this function executes, call push.ts
 async function tallyReports() {
     console.log('Starting tally process...');
     const bloomFilter = await loadBloomFilter();

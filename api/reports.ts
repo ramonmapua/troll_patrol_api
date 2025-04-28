@@ -8,28 +8,24 @@ const redis = new Redis({
     token: process.env.KV_REST_API_TOKEN!,
 });
 
-const REPORT_EXPIRY_SECONDS = 604800; // 7 days
+const REPORT_EXPIRY_SECONDS = 604800; // 7 days expiry
 const RATE_LIMIT_PER_MINUTE = 5;
-const UPLOAD_DAY = 0; // Sunday
-const UPLOAD_HOUR_START = 15; // 11 PM PST
-const UPLOAD_HOUR_END = 16; // 12 AM PST
+const UPLOAD_DAY = 0; // sunday
+const UPLOAD_HOUR_START = 15; // midnight
+const UPLOAD_HOUR_END = 16;   // 1 am
 
-// TODO: Uncomment this time constraint logic when ready
 function uploadWindow(): boolean {
     const now = new Date();
     const currentHour = now.getUTCHours();
     const currentDay = now.getUTCDay();
-    return currentDay === UPLOAD_DAY &&
-        currentHour >= UPLOAD_HOUR_START &&
-        currentHour < UPLOAD_HOUR_END;
+    return currentDay === UPLOAD_DAY && currentHour >= UPLOAD_HOUR_START && currentHour < UPLOAD_HOUR_END;
 }
 
-// Check if reporter has exceeded the rate limit
 async function rateLimitCheck(reporterId: string): Promise<boolean> {
     const rateLimitKey = `rate_limit:${reporterId}`;
     const currentCount = await redis.incr(rateLimitKey);
     if (currentCount === 1) {
-        await redis.expire(rateLimitKey, 60);
+        await redis.expire(rateLimitKey, 60); // rate limit is 1 min
     }
     return currentCount <= RATE_LIMIT_PER_MINUTE;
 }
@@ -38,27 +34,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
     }
-
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
-
-    /*
     if (!uploadWindow()) {
-        return res.status(403).json({ error: 'Uploads are only allowed during the specified time frame.' });
+        return res.status(403).json({ error: 'Uploads are only allowed during the specified upload window (Sunday 3PM-4PM UTC).' });
     }
-    */
-
     try {
         const forwardedFor = req.headers['x-forwarded-for'];
         const reporterId = Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor || req.socket.remoteAddress;
         const { reports } = req.body;
         if (!reporterId || typeof reporterId !== 'string') {
-            return res.status(400).json({ error: 'Unable to identify reporter' });
+            return res.status(400).json({ error: 'Unable to identify reporter.' });
         }
         if (!Array.isArray(reports) || reports.some((profileId) => typeof profileId !== 'string')) {
             return res.status(400).json({ error: 'Invalid reports format. Provide a valid list of profile IDs.' });
@@ -66,20 +56,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!await rateLimitCheck(reporterId)) {
             return res.status(429).json({ error: 'Too many reports. Please try again later.' });
         }
-        const results = await Promise.all(reports.map(async (profileId) => {
-            const reportKey = `report:${profileId}`;
-            const countKey = `${reportKey}:count`;
-            await redis.sadd(reportKey, reporterId);
-            await redis.incr(countKey);
-            await redis.expire(reportKey, REPORT_EXPIRY_SECONDS);
-            await redis.expire(countKey, REPORT_EXPIRY_SECONDS);
-            const totalReports = await redis.get(countKey);
-            return {
-                profileId,
-                message: 'Report received successfully',
-                reports: totalReports ? parseInt(String(totalReports)) : 0
-            };
-        }));
+        const results = await Promise.all(
+            reports.map(async (profileId) => {
+                const reportKey = `report:${profileId}`;
+                const countKey = `${reportKey}:count`;
+                await redis.sadd(reportKey, reporterId);
+                await redis.incr(countKey);
+                await redis.expire(reportKey, REPORT_EXPIRY_SECONDS);
+                await redis.expire(countKey, REPORT_EXPIRY_SECONDS);
+                const totalReports = await redis.get(countKey);
+                return {
+                    profileId,
+                    message: 'Report received successfully',
+                    reports: totalReports ? parseInt(String(totalReports)) : 0,
+                };
+            })
+        );
         return res.status(200).json({ results });
     } catch (error) {
         console.error('Error handling reports:', error);
