@@ -10,19 +10,22 @@ const redis = new Redis({
 
 const REPORT_EXPIRY_SECONDS = 604800; // 7 days expiry
 const RATE_LIMIT_PER_MINUTE = 5;
-const UPLOAD_DAY = 0; // sunday
 
+// this function blocks uploads between 
+// 23:00 and 00:00 UTC
 function uploadWindow(): boolean {
     const now = new Date();
-    const currentDay = now.getUTCDay();
-    return currentDay === UPLOAD_DAY;
+    const hour = now.getUTCHours();
+    return hour !== 23;
 }
 
+// this function blocks uploads when rate limit is reached
+// the rate limit is 1 minute
 async function rateLimitCheck(reporterId: string): Promise<boolean> {
     const rateLimitKey = `rate_limit:${reporterId}`;
     const currentCount = await redis.incr(rateLimitKey);
     if (currentCount === 1) {
-        await redis.expire(rateLimitKey, 60); // rate limit is 1 min
+        await redis.expire(rateLimitKey, 60); 
     }
     return currentCount <= RATE_LIMIT_PER_MINUTE;
 }
