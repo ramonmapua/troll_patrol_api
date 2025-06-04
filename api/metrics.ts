@@ -30,7 +30,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
     }
@@ -40,7 +39,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!uploadWindow()) {
         return res.status(403).json({ error: 'Uploads are not allowed between 23:00 and 00:00 UTC.' });
     }
-
     try {
         const forwardedFor = req.headers['x-forwarded-for'];
         const reporterId = Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor || req.socket.remoteAddress;
@@ -63,10 +61,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!(await rateLimitCheck(reporterId))) {
             return res.status(429).json({ error: 'Too many uploads. Please try again later.' });
         }
-        const todayISO = new Date().toISOString().split('T')[0];
-        const hashKey = `metrics:${reporterId}:${todayISO}`;
-        await redis.hset(hashKey, reports);
+        const hashKey = `metrics:${reporterId}`;
+        // hincrby is to increment, hset is to overwrite
+        await redis.hincrby(hashKey, 'uniqueReports', reports.uniqueReports);
+        await redis.hincrby(hashKey, 'totalReports', reports.totalReports);
+        await redis.hincrby(hashKey, 'blurredEncounters', reports.blurredEncounters);
+        await redis.hincrby(hashKey, 'unblurAttempts', reports.unblurAttempts);
         await redis.expire(hashKey, METRICS_EXPIRY_SECONDS);
+        
         return res.status(200).json({ message: 'Metrics uploaded successfully.' });
     } catch (error) {
         console.error('Error handling metrics upload:', error);
