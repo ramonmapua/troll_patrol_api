@@ -8,7 +8,6 @@ const redis = new Redis({
     token: process.env.KV_REST_API_TOKEN!,
 });
 
-const METRICS_EXPIRY_SECONDS = 604800; // 7 days
 const RATE_LIMIT_PER_MINUTE = 5;
 
 function uploadWindow(): boolean {
@@ -67,7 +66,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         await redis.hincrby(hashKey, 'totalReports', reports.totalReports);
         await redis.hincrby(hashKey, 'blurredEncounters', reports.blurredEncounters);
         await redis.hincrby(hashKey, 'unblurAttempts', reports.unblurAttempts);
-        await redis.expire(hashKey, METRICS_EXPIRY_SECONDS);
         
         return res.status(200).json({ message: 'Metrics uploaded successfully.' });
     } catch (error) {
